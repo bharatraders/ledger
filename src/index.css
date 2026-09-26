@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: 245 247 250;
+  --card: 255 255 255;
+  --ink: 27 35 51;
+  --muted: 93 107 133;
+  --rule: 213 222 238;
+  --head: 35 49 92;
+  --headink: 255 255 255;
+  --accent: 35 49 92;
+  --dr: 179 38 30;
+  --drbg: 251 233 231;
+  --cr: 30 122 76;
+  --crbg: 227 244 234;
+}
+
+.dark {
+  --paper: 18 24 38;
+  --card: 27 36 56;
+  --ink: 237 241 250;
+  --muted: 152 165 192;
+  --rule: 44 57 86;
+  --head: 13 19 34;
+  --headink: 237 241 250;
+  --accent: 143 168 255;
+  --dr: 255 138 128;
+  --drbg: 58 34 37;
+  --cr: 111 217 160;
+  --crbg: 27 51 39;
+}
+
+html,
+body {
+  margin: 0;
+  background: rgb(var(--paper));
+  color: rgb(var(--ink));
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  font-size: 18px;
+  line-height: 1.4;
+  min-height: 100vh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 3px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+#printarea {
+  display: none;
+}
+
+@media print {
+  body > *:not(#printarea) {
+    display: none !important;
+  }
+  #printarea {
+    display: block;
+    color: #000;
+    background: #fff;
+    padding: 16px;
+    max-width: none;
+  }
+  #printarea table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  #printarea th,
+  #printarea td {
+    border: 1px solid #999;
+    padding: 6px;
+    text-align: left;
+  }
+  #printarea td.n,
+  #printarea th.n {
+    text-align: right;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease;
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.sheet-anim {
+  animation: sheet-up 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-anim {
+    animation: none;
+  }
+}

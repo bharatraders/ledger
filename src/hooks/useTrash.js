@@ -1,0 +1,1 @@
+export { useTrash } from './useParties';
