@@ -24,7 +24,7 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: Infinity, gcTime: Infinity } },
 });
 
-export default function LedgerShell() {
+export default function LedgerShell({ children }) {
   // Realtime sync lives here because LedgerShell mounts exactly while the ledger is
   // unlocked (RequireUnlocked wraps it) and unmounts on lock — the same lifetime the
   // channel should have. start/stop are idempotent, so StrictMode double-invocation
@@ -36,7 +36,7 @@ export default function LedgerShell() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      {children ?? <Outlet />}
     </QueryClientProvider>
   );
 }

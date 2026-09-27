@@ -29,7 +29,7 @@ function useSessionActions() {
 
   function handleLock() {
     lock();
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
   }
 
   return { toggle, handleLock };

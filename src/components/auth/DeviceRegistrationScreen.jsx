@@ -52,7 +52,7 @@ export default function DeviceRegistrationScreen() {
       const device = await redeemRegistrationCode(code, deviceName.trim(), navigator.platform ?? 'browser');
       toast('Device registered');
       beginCreatePasscode({ deviceId: device.deviceId, deviceName: deviceName.trim(), deviceSecret: device.deviceSecret });
-      navigate('/create-pin', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       const msg = String(err?.message || '').toLowerCase();
       if (msg.includes('invalid_or_expired')) {
