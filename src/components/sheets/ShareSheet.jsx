@@ -11,8 +11,7 @@ export default function ShareSheet({ party, entries, onClose }) {
 
   function wa() {
     const t = encodeURIComponent(text());
-    const num = party.phone ? (party.phone.length === 10 ? '91' + party.phone : party.phone) : '';
-    window.open('https://wa.me/' + num + '?text=' + t, '_blank');
+    window.open('https://api.whatsapp.com/send?text=' + t, '_blank');
   }
 
   async function native() {
@@ -56,7 +55,13 @@ export default function ShareSheet({ party, entries, onClose }) {
   }
 
   const opts = [
-    { key: 'wa', icon: '💬', title: 'Send on WhatsApp', sub: party.phone ? 'Opens chat with ' + party.phone : 'Pick the chat inside WhatsApp', act: wa },
+    {
+      key: 'wa',
+      icon: '💬',
+      title: 'Send on WhatsApp',
+      sub: 'Pick the chat inside WhatsApp',
+      act: wa,
+    },
     { key: 'native', icon: '📤', title: 'Share via other apps', sub: 'SMS, email, Telegram and more', act: native },
     { key: 'pdf', icon: '📄', title: 'Save as PDF / Print', sub: 'Full statement in a table', act: pdf },
     {
