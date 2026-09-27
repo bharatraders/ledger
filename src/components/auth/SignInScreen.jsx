@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { verifyBillingPin } from '../../lib/api/deviceAuth';
-import { isAuthError } from '../../lib/api/auth';
+import { isDeviceNotTrustedError } from '../../lib/api/auth';
 import { readDevice } from '../../lib/api/deviceStore';
 import PinPad from './PinPad';
 
@@ -48,7 +48,12 @@ export default function SignInScreen({ firstRun = false }) {
       setError(firstRun ? 'That PIN is not correct. It must match the PIN your other devices use.' : 'That PIN is not correct.');
     } catch (err) {
       reset();
-      if (isAuthError(err)) {
+      // ONLY a genuine 'not_trusted' from the server (revoked / server-side
+      // expired session) wipes local state. Everything else — offline blips,
+      // RLS hiccups, 401s from a stale realtime JWT — must stay on /login with
+      // a retry message, or one bad request permanently bricks the device and
+      // forces re-registration even though the device is still 'active'.
+      if (isDeviceNotTrustedError(err)) {
         // Revoked, expired, or not known to the server: drop local state and send this
         // browser back through registration rather than letting it retry forever.
         await forgetDevice();
