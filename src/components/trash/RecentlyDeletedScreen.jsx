@@ -90,7 +90,7 @@ export default function RecentlyDeletedScreen() {
   const loading = partiesQ.isLoading || entriesQ.isLoading;
   return (
     <AppShell>
-      <NavBar title="Recently Deleted" sub="Kept for 45 days, then removed forever" onBack={() => navigate('/')} backLabel="All parties" />
+      <NavBar title="Recently Deleted" sub="Kept for 45 days, then removed forever" onBack={() => navigate('/')} backLabel="All parties" backPill />
       <div className="mx-4 mt-4 grid grid-cols-2 gap-2 rounded-[14px] border border-rule bg-card p-1.5">
         {['parties', 'entries'].map((t) => (
           <button key={t} type="button" onClick={() => setTab(t)} className={`rounded-[10px] px-3 py-2.5 font-bold capitalize ${tab === t ? 'bg-accent text-white dark:text-[#0D1322]' : 'text-muted'}`}>

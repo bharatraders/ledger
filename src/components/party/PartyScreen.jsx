@@ -195,7 +195,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
   if (partyQ.isLoading || entriesQ.isLoading) {
     return (
       <AppShell>
-        <NavBar title="Loading" onBack={back} />
+        <NavBar title="Loading" onBack={back} backPill backHideClass="lg:hidden" />
         <Spinner />
       </AppShell>
     );
@@ -203,7 +203,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
   if (!party) {
     return (
       <AppShell>
-        <NavBar title="Party" onBack={back} />
+        <NavBar title="Party" onBack={back} backPill backHideClass="lg:hidden" />
         <EmptyState>Party not found.</EmptyState>
       </AppShell>
     );
@@ -212,11 +212,18 @@ export default function PartyScreen({ partyId: propId, onBack }) {
     <AppShell>
       {/* Share/Archive/Delete are all party actions, so they live here as buttons.
           Archive and Delete previously hid behind a "..." menu; promoting them is why
-          the global Theme/Lock controls are dropped on this page (sessionControls). */}
+          this header keeps no global Theme/Lock controls (sessionControls) — on
+          desktop they sit in the right pane's sticky navbar, and phone party screens
+          never showed them here. The "< All parties" pill shows on sm/md and is
+          hidden at lg+ (backHideClass), where the desktop sidebar is the way back;
+          onBack still marks this as a sub-page so the section nav pills stay hidden. */}
       <NavBar
         title={party.name}
         sub={party.phone ? formatPhone(party.phone) : ''}
+        belowSub={<PartyNotes notes={party.notes} />}
         onBack={back}
+        backPill
+        backHideClass="lg:hidden"
         sessionControls={false}
         actions={
           <>
@@ -238,7 +245,6 @@ export default function PartyScreen({ partyId: propId, onBack }) {
       <div className="px-[18px]">
         <BalanceBox balance={balance} />
       </div>
-      <PartyNotes notes={party.notes} />
       <ActionButtons onAdd={setEntryType} />
       <AgeingPanel ageing={ageing} />
       {!entries.length ? (

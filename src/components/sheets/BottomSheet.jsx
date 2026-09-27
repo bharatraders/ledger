@@ -25,7 +25,7 @@ export default function BottomSheet({ title, onClose, children, wide }) {
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {title ? <h2 className="mb-3 text-[22px] font-bold">{title}</h2> : null}
+        {title ? <h2 className="mb-3 text-[20px] font-bold md:text-[22px]">{title}</h2> : null}
         {children}
       </div>
     </div>

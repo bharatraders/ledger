@@ -101,7 +101,7 @@ export default function DeviceRegistrationScreen() {
         <button
           type="submit"
           disabled={busy}
-          className="mt-3 w-full rounded-[14px] bg-accent p-[18px] text-xl font-extrabold text-white disabled:opacity-60 dark:text-[#0D1322]"
+          className="mt-3 w-full rounded-[14px] bg-accent p-4 text-xl font-extrabold text-white disabled:opacity-60 dark:text-[#0D1322] md:p-[18px]"
         >
           {busy ? 'Registering…' : 'Register this device'}
         </button>

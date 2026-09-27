@@ -13,7 +13,7 @@ export default function PartyListItem({ party, entries, onOpen, action }) {
       <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <Avatar name={party.name} />
         <div className="min-w-0">
-          <div className="truncate text-[19px] font-semibold">{party.name}</div>
+          <div className="truncate text-[17px] font-semibold md:text-[19px]">{party.name}</div>
           <div className="text-sm text-muted">
             {list.length} entries
             {showBadge ? (
@@ -27,7 +27,7 @@ export default function PartyListItem({ party, entries, onOpen, action }) {
           </div>
         </div>
         <div className="ml-auto flex-none text-right">
-          <b className={`num block text-[19px] ${b > 0 ? 'text-dr' : b < 0 ? 'text-cr' : ''}`}>
+          <b className={`num block text-[17px] md:text-[19px] ${b > 0 ? 'text-dr' : b < 0 ? 'text-cr' : ''}`}>
             ₹{fmtAmount(b)} {balLabel(b)}
           </b>
           <small className="text-[13px] text-muted">{balWords(b)}</small>

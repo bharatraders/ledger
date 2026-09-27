@@ -113,7 +113,7 @@ export default function EntrySheet({ type: initialType, entry, onSave, onClose, 
       </label>
       <input
         id="amt"
-        className="w-full rounded-xl border-2 border-rule bg-paper px-4 py-3 text-[32px] font-extrabold"
+        className="w-full rounded-xl border-2 border-rule bg-paper px-4 py-3 text-[26px] font-extrabold md:text-[32px]"
         inputMode="decimal"
         placeholder="0"
         value={amount}
@@ -125,7 +125,7 @@ export default function EntrySheet({ type: initialType, entry, onSave, onClose, 
       <input
         id="dt"
         type="date"
-        className="w-full rounded-xl border-2 border-rule bg-paper p-3.5"
+        className="w-full min-w-0 max-w-full rounded-xl border-2 border-rule bg-paper p-2.5 md:p-3.5"
         value={date}
         onChange={(e) => setDate(e.target.value)}
       />
@@ -186,7 +186,7 @@ export default function EntrySheet({ type: initialType, entry, onSave, onClose, 
         type="button"
         disabled={saving}
         onClick={save}
-        className={`mt-4 w-full rounded-[14px] p-[18px] text-xl font-extrabold text-white disabled:opacity-60 dark:text-[#0D1322] ${
+        className={`mt-4 w-full rounded-[14px] p-4 text-xl font-extrabold text-white disabled:opacity-60 dark:text-[#0D1322] md:p-[18px] ${
           isDebit ? 'bg-dr' : 'bg-cr'
         }`}
       >

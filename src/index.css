@@ -44,6 +44,26 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Phone/small-tablet layout (< md, matching where the app switches to its phone UI):
+   dial the root down a notch so every rem-based Tailwind size — button text, labels,
+   paddings, gaps — renders smaller. md+ keeps the desktop sizes below unchanged;
+   the px-pinned headline sizes get matching md: overrides in their components. */
+@media (max-width: 767px) {
+  html {
+    font-size: 15px;
+  }
+  body {
+    font-size: 16px;
+  }
+}
+
+/* Native date inputs keep a wide intrinsic width in some mobile browsers and can
+   spill out of the entry sheet — never let them exceed their container. */
+input[type='date'] {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .num {
   font-variant-numeric: tabular-nums;
 }

@@ -101,7 +101,7 @@ export default function DevicesSettingsScreen() {
 
   return (
     <AppShell>
-      <NavBar title="Devices & Security" sub="Trusted browsers for your ledger" onBack={() => navigate('/')} backLabel="All parties" />
+      <NavBar title="Devices & Security" sub="Trusted browsers for your ledger" onBack={() => navigate('/')} backLabel="All parties" backPill />
       <div className="mx-4 mb-10 mt-4 flex flex-col gap-4">
         <section className="rounded-[14px] border border-rule bg-card p-4">
           <h2 className="text-lg font-bold">Register a new device</h2>

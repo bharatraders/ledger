@@ -60,7 +60,7 @@ export default function ArchiveScreen() {
 
   return (
     <AppShell>
-      <NavBar title="Archive" sub={`${parties.length} archived`} onBack={() => navigate('/')} backLabel="All parties" />
+      <NavBar title="Archive" sub={`${parties.length} archived`} onBack={() => navigate('/')} backLabel="All parties" backPill />
       <div className="mx-4 mb-10 mt-4 flex flex-col gap-2.5">
         {archivedQ.isLoading || entriesMapQ.isLoading ? (
           <Spinner />

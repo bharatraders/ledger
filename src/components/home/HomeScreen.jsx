@@ -38,7 +38,7 @@ function useEntriesMap(parties) {
   });
 }
 
-export default function HomeScreen({ onSelectParty, selectedId, embedded }) {
+export default function HomeScreen({ onSelectParty, selectedId, embedded, desktopIcons = true }) {
   const [q, setQ] = useState('');
   const [showPartySheet, setShowPartySheet] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -97,6 +97,7 @@ export default function HomeScreen({ onSelectParty, selectedId, embedded }) {
         title="Party Ledger"
         sub={`${parties.length} parties`}
         actions={null}
+        desktopIcons={desktopIcons}
       />
       <div className="px-[18px]">
         <TotalsBar toGet={fmtAmount(toGet)} toPay={fmtAmount(toPay)} />

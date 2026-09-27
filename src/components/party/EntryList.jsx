@@ -25,7 +25,7 @@ export function EntryCard({ entry, pending, running, onDelete, onEdit, onView })
     <div className={`flex gap-3 rounded-xl border border-l-[6px] border-rule bg-card p-3 shadow-sm ${entry.type === 'd' ? 'border-l-dr' : 'border-l-cr'}`}>
       <div className="min-w-0 flex-1">
         <div>
-          <span className="num text-[22px] font-extrabold">₹{fmtAmount(entry.amount)}</span>
+          <span className="num text-[20px] font-extrabold md:text-[22px]">₹{fmtAmount(entry.amount)}</span>
           <span
             className={`ml-1.5 rounded-md px-2 py-0.5 align-middle text-[13px] font-bold ${
               entry.type === 'd' ? 'bg-drbg text-dr' : 'bg-crbg text-cr'

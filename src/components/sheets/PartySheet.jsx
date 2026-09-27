@@ -94,7 +94,7 @@ export default function PartySheet({
         type="button"
         disabled={saving}
         onClick={save}
-        className="mt-4 w-full rounded-[14px] bg-accent p-[18px] text-xl font-extrabold text-white disabled:opacity-60 dark:text-[#0D1322]"
+        className="mt-4 w-full rounded-[14px] bg-accent p-4 text-xl font-extrabold text-white disabled:opacity-60 dark:text-[#0D1322] md:p-[18px]"
       >
         {saving ? 'Saving…' : submitLabel}
       </button>
