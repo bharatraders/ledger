@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useArchivedParties } from '../../hooks/useParties';
 import { fetchEntries } from '../../lib/api/entries';
 import { setArchived } from '../../lib/api/parties';
+import { applyArchiveState } from '../../lib/cache';
 import { isAuthError } from '../../lib/api/auth';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -22,7 +23,10 @@ export default function ArchiveScreen() {
 
   const parties = archivedQ.data || [];
   const entriesMapQ = useQuery({
-    queryKey: ['entries-map-archived', parties.map((p) => p.id).join(',')],
+    // Stable key like Home's entries-map: the party list is patched in place
+    // (src/lib/cache.js) instead of being baked into the key, so this map is
+    // fetched exactly once per session and never re-fetched on navigation.
+    queryKey: ['entries-map-archived'],
     queryFn: async () => {
       const out = {};
       await Promise.all(
@@ -40,10 +44,11 @@ export default function ArchiveScreen() {
     if (err && isAuthError(err)) lock();
   }, [archivedQ.error, entriesMapQ.error, lock]);
 
-  async function unarchive(id) {
+  async function unarchive(party) {
     try {
-      await setArchived(id, false);
-      await queryClient.invalidateQueries({ queryKey: ['parties'] });
+      await setArchived(party.id, false);
+      // Success first — then the row moves to the local active list, no refetch.
+      await applyArchiveState(queryClient, party, false);
       toast('Party unarchived');
     } catch (e) {
       if (isAuthError(e)) lock();
@@ -70,7 +75,7 @@ export default function ArchiveScreen() {
                 action={
                   <button
                     type="button"
-                    onClick={() => unarchive(p.id)}
+                    onClick={() => unarchive(p)}
                     className="flex-none rounded-xl border border-rule bg-paper px-3 py-2 text-sm font-bold"
                   >
                     Unarchive

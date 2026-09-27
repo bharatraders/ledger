@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useParties } from '../../hooks/useParties';
 import { fetchEntries } from '../../lib/api/entries';
 import { createParty } from '../../lib/api/parties';
+import { applyCreatedParty } from '../../lib/cache';
 import { computeBalance } from '../../utils/ageing';
 import { fmtAmount } from '../../utils/format';
 import { isAuthError } from '../../lib/api/auth';
@@ -19,8 +20,11 @@ import Spinner from '../common/Spinner';
 import EmptyState from '../common/EmptyState';
 
 function useEntriesMap(parties) {
+  // Stable key on purpose: the party-id list used to be part of the key, so adding a
+  // party changed the key and re-fetched every party's entries. The map is patched
+  // in place instead (see src/lib/cache.js) and fetched exactly once per session.
   return useQuery({
-    queryKey: ['entries-map', (parties || []).map((p) => p.id).join(',')],
+    queryKey: ['entries-map'],
     queryFn: async () => {
       const out = {};
       await Promise.all(
@@ -75,7 +79,9 @@ export default function HomeScreen({ onSelectParty, selectedId, embedded }) {
     setSaving(true);
     try {
       const p = await createParty({ name, phone, notes });
-      await queryClient.invalidateQueries({ queryKey: ['parties'] });
+      // Mutation first; only on success the confirmed row joins the local cache —
+      // no invalidate, so no refetch of the parties list.
+      applyCreatedParty(queryClient, p);
       setShowPartySheet(false);
       setQ('');
       toast('Party added');

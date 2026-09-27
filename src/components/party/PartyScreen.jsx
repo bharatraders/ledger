@@ -4,6 +4,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useParty } from '../../hooks/useParties';
 import { createEntry, softDeleteEntry, updateEntry } from '../../lib/api/entries';
 import { setArchived, softDeleteParty, updateParty } from '../../lib/api/parties';
+import {
+  applyArchiveState,
+  applyCreatedEntry,
+  applyDeletedEntry,
+  applyDeletedParty,
+  applyEntryPhotoPath,
+  applyUpdatedEntry,
+  applyUpdatedParty,
+} from '../../lib/cache';
 import { deleteEntryPhoto, setEntryPhotoPath, uploadEntryPhoto, getSignedPhotoUrl } from '../../lib/api/storage';
 import { computeAgeing, computeBalance, runningBalances, sortEntries } from '../../utils/ageing';
 import { fmtAmount } from '../../utils/format';
@@ -57,14 +66,8 @@ export default function PartyScreen({ partyId: propId, onBack }) {
     if (onBack) onBack();
     else navigate('/');
   }
-  async function refresh() {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['party', id] }),
-      queryClient.invalidateQueries({ queryKey: ['entries', id] }),
-      queryClient.invalidateQueries({ queryKey: ['parties'] }),
-      queryClient.invalidateQueries({ queryKey: ['entries-map'] }),
-    ]);
-  }
+  // Mutation contract: POST/PUT/RPC first — the local cache is patched with the
+  // confirmed row only after it succeeds (src/lib/cache.js). No invalidate/refetch.
   // Replace overwrites the deterministic `${partyId}/${entryId}.jpg` object, so a new
   // photo leaves no orphan behind. Remove nulls the column first, then drops the object
   // (photos_delete in 006_storage.sql allows it).
@@ -73,6 +76,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
       try {
         const path = await uploadEntryPhoto(id, entry.id, photoBlob);
         await setEntryPhotoPath(entry.id, path);
+        applyEntryPhotoPath(queryClient, id, entry.id, path);
       } catch {
         toast('Entry saved, but photo upload failed.');
       }
@@ -81,6 +85,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
     if (removePhoto) {
       try {
         await setEntryPhotoPath(entry.id, null);
+        applyEntryPhotoPath(queryClient, id, entry.id, null);
         await deleteEntryPhoto(entry.photo_path);
       } catch {
         toast('Entry saved, but the photo could not be removed.');
@@ -92,23 +97,26 @@ export default function PartyScreen({ partyId: propId, onBack }) {
     setSavingEntry(true);
     try {
       if (editingEntry) {
-        await updateEntry({ id: editingEntry.id, type, amount, entryDate: date, remark });
+        const updated = await updateEntry({ id: editingEntry.id, type, amount, entryDate: date, remark });
+        // Patch the confirmed row first, then the photo change, so the later
+        // photo_path patch cannot be overwritten by a stale copy of the row.
+        applyUpdatedEntry(queryClient, id, updated);
         await applyPhotoChange(editingEntry, { photoBlob, removePhoto });
         setEditingEntry(null);
-        await refresh();
         toast(`Entry updated to \u20B9${fmtAmount(amount)}`);
       } else {
         const created = await createEntry({ partyId: id, type, amount, entryDate: date, remark, photoPath: null });
+        applyCreatedEntry(queryClient, id, created);
         if (photoBlob) {
           try {
             const path = await uploadEntryPhoto(id, created.id, photoBlob);
             await setEntryPhotoPath(created.id, path);
+            applyEntryPhotoPath(queryClient, id, created.id, path);
           } catch {
             toast('Entry saved, but photo upload failed.');
           }
         }
         setEntryType(null);
-        await refresh();
         toast(`${type === 'd' ? 'Debit' : 'Credit'} of \u20B9${fmtAmount(amount)} saved`);
       }
     } catch (e) {
@@ -122,9 +130,9 @@ export default function PartyScreen({ partyId: propId, onBack }) {
   async function savePartyDetails({ name, phone, notes }) {
     setSavingDetails(true);
     try {
-      await updateParty({ id, name, phone, notes });
+      const updated = await updateParty({ id, name, phone, notes });
       setDetailsOpen(false);
-      await refresh();
+      applyUpdatedParty(queryClient, updated);
       toast('Party updated');
     } catch (e) {
       if (isAuthError(e)) lock();
@@ -140,7 +148,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
     try {
       await softDeleteEntry(entry.id);
       setConfirm(null);
-      await refresh();
+      applyDeletedEntry(queryClient, id, entry, party?.name);
       toast('Entry deleted');
     } catch (e) {
       if (isAuthError(e)) lock();
@@ -154,8 +162,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
     try {
       await softDeleteParty(id);
       setConfirm(null);
-      await queryClient.invalidateQueries({ queryKey: ['parties'] });
-      await queryClient.invalidateQueries({ queryKey: ['trash'] });
+      applyDeletedParty(queryClient, party, entries);
       toast('Party deleted');
       back();
     } catch (e) {
@@ -167,8 +174,9 @@ export default function PartyScreen({ partyId: propId, onBack }) {
   }
   async function toggleArchive() {
     try {
-      await setArchived(id, !party.is_archived);
-      await refresh();
+      const next = !party.is_archived;
+      await setArchived(id, next);
+      await applyArchiveState(queryClient, party, next);
       toast(party.is_archived ? 'Party unarchived' : 'Party archived');
     } catch (e) {
       if (isAuthError(e)) lock();

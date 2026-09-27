@@ -7,8 +7,17 @@ import { Outlet } from 'react-router-dom';
 //
 // The client is a module singleton, so it is created once when the chunk first loads and
 // survives lock/unlock (locking unmounts these screens but not the module).
+//
+// Fetch-once-and-cache: staleTime/gcTime Infinity mean every dataset is fetched exactly
+// once per session and then served from the local cache — navigating between screens,
+// refocusing the tab or remounting a component never triggers a GET. Mutations never
+// invalidate (see src/lib/cache.js): they POST/PUT first and patch the cache with the
+// confirmed row only after the API call succeeds, so the remote DB stays the source of
+// truth while this session's view updates locally. A full page reload creates a fresh
+// client, which is what re-syncs with the server. Queries in error state still refetch
+// on mount/reconnect because they hold no data, so failed loads can recover.
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 15_000 } },
+  defaultOptions: { queries: { retry: 1, staleTime: Infinity, gcTime: Infinity } },
 });
 
 export default function LedgerShell() {

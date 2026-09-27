@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { generateRegistrationCode, listDevices, revokeDevice } from '../../lib/api/deviceAuth';
@@ -19,7 +18,6 @@ function fmtTs(ts) {
 
 export default function DevicesSettingsScreen() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { lock } = useAuth();
   const { toast } = useToast();
   const [devices, setDevices] = useState(null);
@@ -79,7 +77,9 @@ export default function DevicesSettingsScreen() {
       await revokeDevice(revokeTarget.id);
       setRevokeTarget(null);
       toast('Device revoked');
-      await queryClient.invalidateQueries();
+      // Devices are loaded through load()'s own state (not react-query), so there is
+      // nothing to invalidate — a blanket invalidateQueries() used to re-GET every
+      // ledger dataset after a revoke.
       await load();
     } catch (e) {
       const msg = String(e?.message || '').toLowerCase();

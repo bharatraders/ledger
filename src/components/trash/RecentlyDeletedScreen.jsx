@@ -5,6 +5,12 @@ import { useTrash } from '../../hooks/useTrash';
 import { restoreParty } from '../../lib/api/parties';
 import { restoreEntry as restoreEntryApi } from '../../lib/api/entries';
 import { daysLeft, fetchDeletedEntryPhotoPathsForParty, purgeNow } from '../../lib/api/trash';
+import {
+  applyPurgedEntry,
+  applyPurgedParty,
+  applyRestoredEntry,
+  applyRestoredParty,
+} from '../../lib/cache';
 import { fmtAmount, fmtDate } from '../../utils/format';
 import { isAuthError } from '../../lib/api/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -28,28 +34,23 @@ export default function RecentlyDeletedScreen() {
   useEffect(() => {
     if (err && isAuthError(err)) lock();
   }, [err, lock]);
-  async function refresh() {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['trash'] }),
-      queryClient.invalidateQueries({ queryKey: ['parties'] }),
-      queryClient.invalidateQueries({ queryKey: ['entries'] }),
-      queryClient.invalidateQueries({ queryKey: ['entries-map'] }),
-    ]);
-  }
-  async function doRestoreParty(id) {
+  // Mutation contract: the RPC runs first — only on success do these helpers patch
+  // the local caches (trash lists, party lists, entries) from the row on screen.
+  // No invalidateQueries, so nothing here triggers a GET.
+  async function doRestoreParty(party) {
     try {
-      await restoreParty(id);
-      await refresh();
+      await restoreParty(party.id);
+      await applyRestoredParty(queryClient, party);
       toast('Party restored');
     } catch (e) {
       if (isAuthError(e)) lock();
       else toast('Could not restore. Try again.');
     }
   }
-  async function doRestoreEntry(id) {
+  async function doRestoreEntry(entry) {
     try {
-      await restoreEntryApi(id);
-      await refresh();
+      await restoreEntryApi(entry.id);
+      applyRestoredEntry(queryClient, entry);
       toast('Entry restored');
     } catch (e) {
       if (isAuthError(e)) lock();
@@ -61,15 +62,22 @@ export default function RecentlyDeletedScreen() {
     setBusy(true);
     try {
       if (confirm.kind === 'party') {
-        const photos = await fetchDeletedEntryPhotoPathsForParty(confirm.item.id);
+        // Photo cleanup needs every photo path of the party's entries: read from the
+        // just-fetched trash cache; only if that cache is somehow missing, fall back
+        // to fetching the paths (data the purge itself needs — not a UI refresh).
+        const cached = queryClient.getQueryData(['trash', 'entries']);
+        const photos = cached
+          ? cached.filter((e) => e.party_id === confirm.item.id).map((e) => e.photo_path).filter(Boolean)
+          : await fetchDeletedEntryPhotoPathsForParty(confirm.item.id);
         await purgeNow('party', confirm.item.id, photos);
+        applyPurgedParty(queryClient, confirm.item.id);
         toast('Party permanently deleted');
       } else {
         await purgeNow('entry', confirm.item.id, confirm.item.photo_path ? [confirm.item.photo_path] : []);
+        applyPurgedEntry(queryClient, confirm.item);
         toast('Entry permanently deleted');
       }
       setConfirm(null);
-      await refresh();
     } catch (e) {
       if (isAuthError(e)) lock();
       else toast('Could not delete. Try again.');
@@ -98,7 +106,7 @@ export default function RecentlyDeletedScreen() {
                 <div className="font-semibold">{p.name}</div>
                 <div className="text-sm text-muted">Deleted {p.deleted_at ? fmtDate(p.deleted_at.slice(0, 10)) : ''} · Purges in {daysLeft(p.purge_at)} days</div>
                 <div className="mt-2.5 flex gap-2">
-                  <button type="button" onClick={() => doRestoreParty(p.id)} className="flex-1 rounded-xl border border-rule bg-paper px-3 py-2.5 font-bold">Restore</button>
+                  <button type="button" onClick={() => doRestoreParty(p)} className="flex-1 rounded-xl border border-rule bg-paper px-3 py-2.5 font-bold">Restore</button>
                   <button type="button" onClick={() => setConfirm({ kind: 'party', item: p })} className="flex-1 rounded-xl bg-dr px-3 py-2.5 font-bold text-white dark:text-[#0D1322]">Delete permanently</button>
                 </div>
               </div>
@@ -112,7 +120,7 @@ export default function RecentlyDeletedScreen() {
                 <div className="font-semibold">{e.parties?.name || 'Party'} · <span className="num">₹{fmtAmount(e.amount)}</span> {e.type === 'd' ? 'Debit' : 'Credit'}</div>
                 <div className="text-sm text-muted">{fmtDate(e.entry_date)}{e.remark ? ` · ${e.remark}` : ''} · Purges in {daysLeft(e.purge_at)} days</div>
                 <div className="mt-2.5 flex gap-2">
-                  <button type="button" onClick={() => doRestoreEntry(e.id)} className="flex-1 rounded-xl border border-rule bg-paper px-3 py-2.5 font-bold">Restore</button>
+                  <button type="button" onClick={() => doRestoreEntry(e)} className="flex-1 rounded-xl border border-rule bg-paper px-3 py-2.5 font-bold">Restore</button>
                   <button type="button" onClick={() => setConfirm({ kind: 'entry', item: e })} className="flex-1 rounded-xl bg-dr px-3 py-2.5 font-bold text-white dark:text-[#0D1322]">Delete permanently</button>
                 </div>
               </div>
