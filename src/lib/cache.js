@@ -135,9 +135,11 @@ export async function applyArchiveState(qc, party, archived) {
 // RPC wrote: deleted_at = now(), purge_at = now() + 45 days.
 export function applyDeletedParty(qc, party, entries) {
   removeFromPartyLists(qc, party.id);
-  const now = new Date();
-  const iso = now.toISOString();
-  const purgeAt = new Date(now.getTime() + TRASH_TTL_MS).toISOString();
+  // The server's own timestamps (present on live-sync events and echoes of this
+  // device's writes) win over local estimates so every path converges on
+  // identical rows.
+  const iso = party.deleted_at || new Date().toISOString();
+  const purgeAt = party.purge_at || new Date(new Date(iso).getTime() + TRASH_TTL_MS).toISOString();
   patch(qc, ['trash', 'parties'], (list) =>
     [...list.filter((p) => p.id !== party.id), { ...party, deleted_at: iso, purge_at: purgeAt }].sort(byPurgeAt)
   );
@@ -189,22 +191,28 @@ export function applyEntryPhotoPath(qc, partyId, entryId, photoPath) {
   patchMapForParty(qc, partyId, patchRow);
 }
 
-// soft_delete_entry() succeeded; `entry` is the row the user acted on.
+// soft_delete_entry() succeeded; `entry` is the row the user acted on. On live-sync
+// events the row already carries the server's own deleted_at/purge_at/
+// deleted_with_party — those values win over local estimates. `partyName` is optional:
+// CDC rows carry no parties(name) join, so the name falls back to whatever cache has it.
 export function applyDeletedEntry(qc, partyId, entry, partyName) {
   patch(qc, ['entries', partyId], (list) => list.filter((e) => e.id !== entry.id));
   patchMapForParty(qc, partyId, (list) => list.filter((e) => e.id !== entry.id));
-  patch(qc, ['trash', 'entries'], (list) =>
-    [
+  const nameFallback = partyName || findPartyName(qc, partyId);
+  patch(qc, ['trash', 'entries'], (list) => {
+    const existing = list.find((e) => e.id === entry.id);
+    const name = nameFallback || existing?.parties?.name;
+    return [
       ...list.filter((e) => e.id !== entry.id),
       {
         ...entry,
-        deleted_at: new Date().toISOString(),
-        purge_at: new Date(Date.now() + TRASH_TTL_MS).toISOString(),
-        deleted_with_party: false,
-        parties: partyName ? { name: partyName } : entry.parties,
+        deleted_at: entry.deleted_at || new Date().toISOString(),
+        purge_at: entry.purge_at || new Date(Date.now() + TRASH_TTL_MS).toISOString(),
+        deleted_with_party: entry.deleted_with_party ?? false,
+        parties: name ? { name } : entry.parties,
       },
-    ].sort(byPurgeAt)
-  );
+    ].sort(byPurgeAt);
+  });
 }
 
 // restore_entry() succeeded; `entry` is the trash row that was on screen.
@@ -221,4 +229,26 @@ export function applyPurgedEntry(qc, entry) {
   patch(qc, ['trash', 'entries'], (list) => list.filter((e) => e.id !== entry.id));
   patch(qc, ['entries', entry.party_id], (list) => list.filter((e) => e.id !== entry.id));
   patchMapForParty(qc, entry.party_id, (list) => list.filter((e) => e.id !== entry.id));
+}
+
+// ---- Live sync support (used by src/lib/realtimeSync.js) --------------------
+
+// Best-effort party-name lookup for delete events: a CDC row carries no
+// parties(name) join, so the name is pulled from whichever cache holds it.
+function findPartyName(qc, partyId) {
+  for (const key of [['party', partyId], ...PARTY_LIST_KEYS]) {
+    const name = qc.getQueryData(key)?.name;
+    if (name) return name;
+  }
+  return qc.getQueryData(['trash', 'parties'])?.find((p) => p.id === partyId)?.name;
+}
+
+// Rows fetched with includeDeleted after a remote party delete go into a cached
+// trash list verbatim (server timestamps intact), deduped by id.
+export function insertTrashEntries(qc, rows) {
+  if (!rows.length) return;
+  patch(qc, ['trash', 'entries'], (list) => {
+    const added = rows.filter((r) => !list.some((t) => t.id === r.id));
+    return added.length ? [...list, ...added].sort(byPurgeAt) : list;
+  });
 }
