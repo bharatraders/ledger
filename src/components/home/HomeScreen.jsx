@@ -3,10 +3,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useParties } from '../../hooks/useParties';
 import { fetchEntries } from '../../lib/api/entries';
-import { createParty } from '../../lib/api/parties';
-import { applyCreatedParty } from '../../lib/cache';
+import { createPartySafe } from '../../lib/api/parties';
+import { createEntry } from '../../lib/api/entries';
+import { applyCreatedEntry, applyCreatedParty } from '../../lib/cache';
 import { computeBalance } from '../../utils/ageing';
-import { fmtAmount } from '../../utils/format';
+import { fmtAmount, todayStr } from '../../utils/format';
 import { isAuthError } from '../../lib/api/auth';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -75,13 +76,30 @@ export default function HomeScreen({ onSelectParty, selectedId, embedded, deskto
     else navigate(`/party/${id}`);
   }
 
-  async function saveParty({ name, phone, notes }) {
+  async function saveParty({ name, phone, notes, address, opening }) {
     setSaving(true);
     try {
-      const p = await createParty({ name, phone, notes });
+      const p = await createPartySafe({ name, phone, notes, address });
       // Mutation first; only on success the confirmed row joins the local cache —
       // no invalidate, so no refetch of the parties list.
       applyCreatedParty(queryClient, p);
+      // Opening balance becomes a real first entry (flagged is_opening when the
+      // 014 migration has run), so balances/ageing/statements include it.
+      if (opening && opening.amount > 0) {
+        try {
+          const e = await createEntry({
+            partyId: p.id,
+            type: opening.type,
+            amount: opening.amount,
+            entryDate: todayStr(),
+            remark: 'Opening balance',
+            isOpening: true,
+          });
+          applyCreatedEntry(queryClient, p.id, e);
+        } catch {
+          toast('Party added, but opening balance could not be saved.');
+        }
+      }
       setShowPartySheet(false);
       setQ('');
       toast('Party added');
@@ -142,6 +160,7 @@ export default function HomeScreen({ onSelectParty, selectedId, embedded, deskto
         <PartySheet
           initialName={q.trim()}
           saving={saving}
+          allowOpening
           onSave={saveParty}
           onClose={() => setShowPartySheet(false)}
         />

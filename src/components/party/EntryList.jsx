@@ -1,25 +1,37 @@
 import { useEffect, useState } from 'react';
 import { fmtAmount, fmtDate, balLabel } from '../../utils/format';
+import { entryPhotos } from '../../lib/api/entries';
 import { getSignedPhotoUrl } from '../../lib/api/storage';
 
-export function EntryCard({ entry, pending, running, onDelete, onEdit, onView }) {
-  const [thumb, setThumb] = useState('');
+function usePhotoThumbs(entry) {
+  const [thumbs, setThumbs] = useState([]);
   useEffect(() => {
     let live = true;
-    if (entry.photo_path) {
-      getSignedPhotoUrl(entry.photo_path).then(
-        (u) => {
-          if (live) setThumb(u);
-        },
-        () => {}
-      );
+    const paths = entryPhotos(entry);
+    if (!paths.length) {
+      setThumbs([]);
+      return () => {
+        live = false;
+      };
     }
+    Promise.all(paths.map((p) => getSignedPhotoUrl(p).then((u) => [p, u]).catch(() => null))).then(
+      (pairs) => {
+        if (!live) return;
+        setThumbs((pairs || []).filter(Boolean).map(([, u]) => u));
+      }
+    );
     return () => {
       live = false;
     };
-    // updated_at is in the deps on purpose: replacing a photo keeps the same storage
-    // path, so without it the thumbnail would keep showing the stale signed URL.
-  }, [entry.photo_path, entry.updated_at]);
+    // updated_at is in the deps on purpose: replacing photos can keep the same
+    // storage paths, so without it thumbnails would keep showing stale URLs.
+  }, [entryPhotos(entry).join('|'), entry.updated_at]);
+  return thumbs;
+}
+
+export function EntryCard({ entry, pending, running, onDelete, onEdit, onView }) {
+  const thumbs = usePhotoThumbs(entry);
+  const photoCount = entryPhotos(entry).length;
 
   return (
     <div className={`flex gap-3 rounded-xl border border-l-[6px] border-rule bg-card p-3 shadow-sm ${entry.type === 'd' ? 'border-l-dr' : 'border-l-cr'}`}>
@@ -33,6 +45,11 @@ export function EntryCard({ entry, pending, running, onDelete, onEdit, onView })
           >
             {entry.type === 'd' ? 'Debit' : 'Credit'}
           </span>
+          {entry.is_opening ? (
+            <span className="ml-1.5 rounded-md bg-accent/15 px-2 py-0.5 align-middle text-[13px] font-bold text-accent">
+              Opening
+            </span>
+          ) : null}
         </div>
         <div className="text-sm text-muted">{fmtDate(entry.entry_date)}</div>
         {entry.remark ? <div className="mt-1 break-words">{entry.remark}</div> : null}
@@ -51,9 +68,14 @@ export function EntryCard({ entry, pending, running, onDelete, onEdit, onView })
         </div>
       </div>
       <div className="flex flex-none flex-col items-end gap-2">
-        {thumb ? (
-          <button type="button" onClick={onView} aria-label="View slip photo">
-            <img alt="Slip photo thumbnail" src={thumb} className="h-16 w-16 rounded-[10px] border border-rule bg-rule object-cover" />
+        {thumbs.length ? (
+          <button type="button" onClick={() => onView(entry, 0)} aria-label={`View ${photoCount} slip photos`} className="relative">
+            <img alt="Slip photo thumbnail" src={thumbs[0]} className="h-16 w-16 rounded-[10px] border border-rule bg-rule object-cover" />
+            {photoCount > 1 ? (
+              <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                +{photoCount - 1}
+              </span>
+            ) : null}
           </button>
         ) : null}
         <button type="button" onClick={onEdit} className="p-1 text-sm font-semibold text-accent">

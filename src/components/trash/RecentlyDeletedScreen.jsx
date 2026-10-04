@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTrash } from '../../hooks/useTrash';
 import { restoreParty } from '../../lib/api/parties';
 import { restoreEntry as restoreEntryApi } from '../../lib/api/entries';
+import { entryPhotos } from '../../lib/api/entries';
 import { daysLeft, fetchDeletedEntryPhotoPathsForParty, purgeNow } from '../../lib/api/trash';
 import {
   applyPurgedEntry,
@@ -67,13 +68,13 @@ export default function RecentlyDeletedScreen() {
         // to fetching the paths (data the purge itself needs — not a UI refresh).
         const cached = queryClient.getQueryData(['trash', 'entries']);
         const photos = cached
-          ? cached.filter((e) => e.party_id === confirm.item.id).map((e) => e.photo_path).filter(Boolean)
+          ? cached.filter((e) => e.party_id === confirm.item.id).flatMap((e) => entryPhotos(e))
           : await fetchDeletedEntryPhotoPathsForParty(confirm.item.id);
         await purgeNow('party', confirm.item.id, photos);
         applyPurgedParty(queryClient, confirm.item.id);
         toast('Party permanently deleted');
       } else {
-        await purgeNow('entry', confirm.item.id, confirm.item.photo_path ? [confirm.item.photo_path] : []);
+        await purgeNow('entry', confirm.item.id, entryPhotos(confirm.item));
         applyPurgedEntry(queryClient, confirm.item);
         toast('Entry permanently deleted');
       }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useParty } from '../../hooks/useParties';
-import { createEntry, softDeleteEntry, updateEntry } from '../../lib/api/entries';
+import { createEntry, entryPhotos, softDeleteEntry, updateEntry } from '../../lib/api/entries';
 import { setArchived, softDeleteParty, updateParty } from '../../lib/api/parties';
 import {
   applyArchiveState,
@@ -13,7 +13,7 @@ import {
   applyUpdatedEntry,
   applyUpdatedParty,
 } from '../../lib/cache';
-import { deleteEntryPhoto, setEntryPhotoPath, uploadEntryPhoto, getSignedPhotoUrl } from '../../lib/api/storage';
+import { deleteEntryPhoto, setEntryPhotoPaths, uploadEntryPhotos, uploadEntryPhoto, getSignedPhotoUrl } from '../../lib/api/storage';
 import { computeAgeing, computeBalance, runningBalances, sortEntries } from '../../utils/ageing';
 import { fmtAmount } from '../../utils/format';
 import { formatPhone } from '../../utils/phone';
@@ -51,7 +51,8 @@ export default function PartyScreen({ partyId: propId, onBack }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [viewerUrl, setViewerUrl] = useState('');
+  const [viewerUrls, setViewerUrls] = useState([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const err = partyQ.error || entriesQ.error;
   useEffect(() => {
     if (err && isAuthError(err)) lock();
@@ -68,32 +69,50 @@ export default function PartyScreen({ partyId: propId, onBack }) {
   }
   // Mutation contract: POST/PUT/RPC first — the local cache is patched with the
   // confirmed row only after it succeeds (src/lib/cache.js). No invalidate/refetch.
-  // Replace overwrites the deterministic `${partyId}/${entryId}.jpg` object, so a new
-  // photo leaves no orphan behind. Remove nulls the column first, then drops the object
-  // (photos_delete in 006_storage.sql allows it).
-  async function applyPhotoChange(entry, { photoBlob, removePhoto }) {
-    if (photoBlob) {
-      try {
-        const path = await uploadEntryPhoto(id, entry.id, photoBlob);
-        await setEntryPhotoPath(entry.id, path);
-        applyEntryPhotoPath(queryClient, id, entry.id, path);
-      } catch {
-        toast('Entry saved, but photo upload failed.');
+  // Photos: kept photos stay at their stored paths (stable per index), new blobs
+  // are appended after them; removed ones are deleted from Storage after the row
+  // update succeeds, so a failed save never orphans the visible set.
+  async function applyPhotoChange(entry, { photoBlobs = [], keepPhotoPaths, photoBlob, removePhoto }) {
+    const existing = entryPhotos(entry);
+    const keep = Array.isArray(keepPhotoPaths) ? keepPhotoPaths.filter(Boolean) : null;
+    const blobs = Array.isArray(photoBlobs) && photoBlobs.length ? photoBlobs : photoBlob ? [photoBlob] : [];
+    // No new multi-photo payload — fall back to the legacy single-photo flow.
+    if (!keep && !blobs.length) {
+      if (photoBlob) {
+        try {
+          const path = await uploadEntryPhoto(id, entry.id, photoBlob);
+          await setEntryPhotoPath(entry.id, path);
+          applyEntryPhotoPath(queryClient, id, entry.id, path);
+        } catch {
+          toast('Entry saved, but photo upload failed.');
+        }
+        return;
+      }
+      if (removePhoto) {
+        try {
+          await setEntryPhotoPaths(entry.id, []);
+          applyEntryPhotoPath(queryClient, id, entry.id, []);
+          await Promise.all(existing.map((p) => deleteEntryPhoto(p).catch(() => {})));
+        } catch {
+          toast('Entry saved, but the photo could not be removed.');
+        }
       }
       return;
     }
-    if (removePhoto) {
-      try {
-        await setEntryPhotoPath(entry.id, null);
-        applyEntryPhotoPath(queryClient, id, entry.id, null);
-        await deleteEntryPhoto(entry.photo_path);
-      } catch {
-        toast('Entry saved, but the photo could not be removed.');
-      }
+    const keepList = keep || (removePhoto ? [] : existing);
+    try {
+      const uploaded = blobs.length ? await uploadEntryPhotos(id, entry.id, blobs, keepList.length) : [];
+      const finalPaths = [...keepList, ...uploaded];
+      await setEntryPhotoPaths(entry.id, finalPaths);
+      applyEntryPhotoPath(queryClient, id, entry.id, finalPaths);
+      const removed = existing.filter((p) => !finalPaths.includes(p));
+      await Promise.all(removed.map((p) => deleteEntryPhoto(p).catch(() => {})));
+    } catch {
+      toast('Entry saved, but photos could not be updated.');
     }
   }
 
-  async function saveEntry({ type, amount, date, remark, photoBlob, removePhoto }) {
+  async function saveEntry({ type, amount, date, remark, photoBlobs, keepPhotoPaths, photoBlob, removePhoto }) {
     setSavingEntry(true);
     try {
       if (editingEntry) {
@@ -101,17 +120,18 @@ export default function PartyScreen({ partyId: propId, onBack }) {
         // Patch the confirmed row first, then the photo change, so the later
         // photo_path patch cannot be overwritten by a stale copy of the row.
         applyUpdatedEntry(queryClient, id, updated);
-        await applyPhotoChange(editingEntry, { photoBlob, removePhoto });
+        await applyPhotoChange(editingEntry, { photoBlobs, keepPhotoPaths, photoBlob, removePhoto });
         setEditingEntry(null);
         toast(`Entry updated to \u20B9${fmtAmount(amount)}`);
       } else {
         const created = await createEntry({ partyId: id, type, amount, entryDate: date, remark, photoPath: null });
         applyCreatedEntry(queryClient, id, created);
-        if (photoBlob) {
+        const blobs = Array.isArray(photoBlobs) && photoBlobs.length ? photoBlobs : photoBlob ? [photoBlob] : [];
+        if (blobs.length) {
           try {
-            const path = await uploadEntryPhoto(id, created.id, photoBlob);
-            await setEntryPhotoPath(created.id, path);
-            applyEntryPhotoPath(queryClient, id, created.id, path);
+            const paths = await uploadEntryPhotos(id, created.id, blobs);
+            await setEntryPhotoPaths(created.id, paths);
+            applyEntryPhotoPath(queryClient, id, created.id, paths);
           } catch {
             toast('Entry saved, but photo upload failed.');
           }
@@ -127,10 +147,10 @@ export default function PartyScreen({ partyId: propId, onBack }) {
     }
   }
 
-  async function savePartyDetails({ name, phone, notes }) {
+  async function savePartyDetails({ name, phone, notes, address }) {
     setSavingDetails(true);
     try {
-      const updated = await updateParty({ id, name, phone, notes });
+      const updated = await updateParty({ id, name, phone, notes, address });
       setDetailsOpen(false);
       applyUpdatedParty(queryClient, updated);
       toast('Party updated');
@@ -183,11 +203,13 @@ export default function PartyScreen({ partyId: propId, onBack }) {
       else toast('Could not update. Try again.');
     }
   }
-  async function viewPhoto(entry) {
-    if (!entry.photo_path) return;
+  async function viewPhoto(entry, startIndex = 0) {
+    const paths = entryPhotos(entry);
+    if (!paths.length) return;
     try {
-      const url = await getSignedPhotoUrl(entry.photo_path);
-      setViewerUrl(url);
+      const urls = await Promise.all(paths.map((p) => getSignedPhotoUrl(p)));
+      setViewerUrls(urls);
+      setViewerIndex(Math.min(Math.max(startIndex, 0), urls.length - 1));
     } catch {
       toast('Could not load photo.');
     }
@@ -220,7 +242,12 @@ export default function PartyScreen({ partyId: propId, onBack }) {
       <NavBar
         title={party.name}
         sub={party.phone ? formatPhone(party.phone) : ''}
-        belowSub={<PartyNotes notes={party.notes} />}
+        belowSub={
+          <>
+            {party.address ? <p className="mt-1 text-[15px] opacity-75 whitespace-pre-wrap break-words">📍 {party.address}</p> : null}
+            <PartyNotes notes={party.notes} />
+          </>
+        }
         onBack={back}
         backPill
         backHideClass="lg:hidden"
@@ -270,6 +297,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
           initialName={party.name}
           initialPhone={party.phone || ''}
           initialNotes={party.notes || ''}
+          initialAddress={party.address || ''}
           saving={savingDetails}
           onSave={savePartyDetails}
           onClose={() => setDetailsOpen(false)}
@@ -282,7 +310,9 @@ export default function PartyScreen({ partyId: propId, onBack }) {
       {confirm?.kind === 'party' ? (
         <ConfirmDialog title="Delete party?" description="The party and all its entries will move to Recently Deleted for 45 days. You can restore them any time before that." confirmLabel="Delete party" busy={busy} onCancel={() => setConfirm(null)} onConfirm={doDeleteParty} />
       ) : null}
-      {viewerUrl ? <PhotoViewer src={viewerUrl} onClose={() => setViewerUrl('')} /> : null}
+      {viewerUrls.length ? (
+        <PhotoViewer photos={viewerUrls} index={viewerIndex} onIndex={setViewerIndex} onClose={() => setViewerUrls([])} />
+      ) : null}
     </AppShell>
   );
 }

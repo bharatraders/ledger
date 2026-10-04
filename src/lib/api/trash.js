@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { entryPhotos } from './entries';
 
 export async function fetchDeletedParties() {
   const { data, error } = await supabase
@@ -23,10 +24,10 @@ export async function fetchDeletedEntries() {
 export async function fetchDeletedEntryPhotoPathsForParty(partyId) {
   const { data, error } = await supabase
     .from('entries')
-    .select('photo_path')
+    .select('photo_path, photo_paths')
     .eq('party_id', partyId);
   if (error) throw error;
-  return (data || []).map((e) => e.photo_path).filter(Boolean);
+  return (data || []).flatMap((e) => entryPhotos(e));
 }
 
 export async function purgeNow(kind, id, photoPaths = []) {

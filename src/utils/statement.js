@@ -7,6 +7,7 @@ export function statement(party, entries) {
   const L = [];
   L.push('*Account Statement*');
   L.push('Party: *' + party.name + '*');
+  if ((party.address || '').trim()) L.push('Address: ' + party.address.trim());
   L.push('As on: ' + fmtDate(todayStr()));
   L.push('');
   sortEntries(entries, true).forEach((e) => {
@@ -16,7 +17,7 @@ export function statement(party, entries) {
         (e.type === 'd' ? 'Debit ' : 'Credit') +
         '  \u20B9' +
         fmtAmount(e.amount) +
-        (e.remark ? '  (' + e.remark + ')' : '')
+        (e.is_opening ? '  (Opening balance)' : e.remark ? '  (' + e.remark + ')' : '')
     );
   });
   L.push('');
@@ -69,7 +70,9 @@ export function printHTML(party, entries) {
   return (
     '<h2>Account Statement: ' +
     esc(party.name) +
-    '</h2><p>As on ' +
+    '</h2>' +
+    ((party.address || '').trim() ? '<p>' + esc(party.address.trim()) + '</p>' : '') +
+    '<p>As on ' +
     fmtDate(todayStr()) +
     '</p><table><thead><tr><th>Date</th><th>Remark</th><th class="n">Debit</th><th class="n">Credit</th><th class="n">Balance</th></tr></thead><tbody>' +
     rows +

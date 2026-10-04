@@ -184,9 +184,17 @@ export function applyUpdatedEntry(qc, partyId, entry) {
   applyCreatedEntry(qc, partyId, entry);
 }
 
-// Photo changes own entries.photo_path; keeps the cached rows in step without a refetch.
+// Photo changes own entries.photo_path/photo_paths; keeps the cached rows in
+// step without a refetch. Accepts either a single path or the full array.
 export function applyEntryPhotoPath(qc, partyId, entryId, photoPath) {
-  const patchRow = (list) => list.map((e) => (e.id === entryId ? { ...e, photo_path: photoPath } : e));
+  const patchRow = (list) =>
+    list.map((e) =>
+      e.id === entryId
+        ? Array.isArray(photoPath)
+          ? { ...e, photo_paths: photoPath, photo_path: photoPath[0] || null }
+          : { ...e, photo_path: photoPath }
+        : e
+    );
   patch(qc, ['entries', partyId], patchRow);
   patchMapForParty(qc, partyId, patchRow);
 }

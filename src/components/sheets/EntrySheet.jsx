@@ -2,62 +2,79 @@ import { useEffect, useRef, useState } from 'react';
 import BottomSheet from './BottomSheet';
 import { compressImage } from '../../utils/image';
 import { fmtAmount, todayStr } from '../../utils/format';
+import { entryPhotos } from '../../lib/api/entries';
 import { getSignedPhotoUrl } from '../../lib/api/storage';
 
 // One sheet for adding and editing entries: pass `entry` to edit it. In edit mode the
-// type can be flipped too (a debit logged as a credit is the usual mistake) and the
-// stored photo is previewed from a signed URL until Remove, or a new pick replaces it.
+// type can be flipped too (a debit logged as a credit is the usual mistake).
+// Photos: an entry holds 0..N images. Existing ones load as signed URLs (kept
+// unless removed); new picks are compressed, previewed locally, and uploaded on
+// save. `entryPhotos()` reads both the new photo_paths array and the legacy
+// single photo_path column.
 export default function EntrySheet({ type: initialType, entry, onSave, onClose, saving }) {
   const editing = Boolean(entry);
   const [type, setType] = useState(initialType || entry?.type || 'd');
   const [amount, setAmount] = useState(entry ? fmtAmount(entry.amount) : '');
   const [date, setDate] = useState(entry?.entry_date || todayStr());
   const [remark, setRemark] = useState(entry?.remark || '');
-  const [photoBlob, setPhotoBlob] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [keepExisting, setKeepExisting] = useState(Boolean(entry?.photo_path));
-  const [existingUrl, setExistingUrl] = useState('');
+  const [photoBlobs, setPhotoBlobs] = useState([]);
+  const [previews, setPreviews] = useState([]);
+  const [keepPaths, setKeepPaths] = useState(() => entryPhotos(entry));
+  const [existingUrls, setExistingUrls] = useState({});
   const [error, setError] = useState('');
   const camRef = useRef(null);
   const galRef = useRef(null);
 
   useEffect(() => {
-    if (!entry?.photo_path) return undefined;
+    const paths = entryPhotos(entry);
+    if (!paths.length) return undefined;
     let live = true;
-    getSignedPhotoUrl(entry.photo_path).then(
-      (u) => {
-        if (live) setExistingUrl(u);
-      },
-      () => {}
-    );
+    Promise.all(
+      paths.map((p) => getSignedPhotoUrl(p).then((u) => [p, u]).catch(() => null))
+    ).then((pairs) => {
+      if (!live) return;
+      const map = {};
+      (pairs || []).forEach((pair) => {
+        if (pair) map[pair[0]] = pair[1];
+      });
+      setExistingUrls(map);
+    });
     return () => {
       live = false;
     };
-  }, [entry?.photo_path]);
+  }, [entry?.id]);
 
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previews.forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [previewUrl]);
+  }, [previews]);
 
-  async function pick(file) {
-    if (!file) return;
+  async function pickFiles(files) {
+    const list = Array.from(files || []);
+    if (!list.length) return;
+    if (keepPaths.length + photoBlobs.length + list.length > 5) {
+      setError('Maximum 5 photos per entry.');
+      return;
+    }
     try {
-      const blob = await compressImage(file, { maxDim: 1280, quality: 0.75 });
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPhotoBlob(blob);
-      setPreviewUrl(URL.createObjectURL(blob));
+      const blobs = await Promise.all(list.map((f) => compressImage(f, { maxDim: 1280, quality: 0.75 })));
+      const urls = blobs.map((b) => URL.createObjectURL(b));
+      setPhotoBlobs((prev) => [...prev, ...blobs]);
+      setPreviews((prev) => [...prev, ...urls]);
     } catch {
-      setError('Could not read that photo. Try another.');
+      setError('Could not read those photos. Try others.');
     }
   }
 
-  function removePhoto() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPhotoBlob(null);
-    setPreviewUrl('');
-    setKeepExisting(false); // drops the stored photo when the entry is saved
+  function removeNewPhoto(i) {
+    URL.revokeObjectURL(previews[i]);
+    setPhotoBlobs((prev) => prev.filter((_, j) => j !== i));
+    setPreviews((prev) => prev.filter((_, j) => j !== i));
+  }
+
+  function removeExisting(path) {
+    setKeepPaths((prev) => prev.filter((p) => p !== path));
   }
 
   async function save() {
@@ -76,14 +93,16 @@ export default function EntrySheet({ type: initialType, entry, onSave, onClose, 
       amount: amt,
       date,
       remark: remark.trim(),
-      photoBlob,
-      // Only meaningful in edit mode: the stored photo should be deleted, and the sheet
-      // was neither given a replacement nor told to keep it.
-      removePhoto: Boolean(!photoBlob && !keepExisting && entry?.photo_path),
+      photoBlobs,
+      keepPhotoPaths: keepPaths,
+      // Legacy single-photo contract (kept for callers that still use it):
+      photoBlob: photoBlobs[0] || null,
+      removePhoto: Boolean(!photoBlobs.length && !keepPaths.length && entryPhotos(entry).length),
     });
   }
 
   const isDebit = type === 'd';
+  const totalPhotos = keepPaths.length + previews.length;
 
   return (
     <BottomSheet title={editing ? 'Edit entry' : isDebit ? 'Add Debit entry' : 'Add Credit entry'} onClose={onClose}>
@@ -140,20 +159,45 @@ export default function EntrySheet({ type: initialType, entry, onSave, onClose, 
         value={remark}
         onChange={(e) => setRemark(e.target.value)}
       />
-      <div className="mb-1 mt-3 text-[15px] font-semibold text-muted">Photo of challan or slip</div>
-      {previewUrl || (keepExisting && existingUrl) ? (
-        <div className="relative mt-2">
-          <img alt="Slip preview" src={previewUrl || existingUrl} className="max-h-60 w-full rounded-xl bg-rule object-contain" />
-          <button
-            type="button"
-            onClick={removePhoto}
-            className="absolute right-2 top-2 rounded-full bg-black/65 px-3 py-1.5 text-sm text-white"
-          >
-            Remove
-          </button>
+      <div className="mb-1 mt-3 text-[15px] font-semibold text-muted">
+        Photos of challan or slip {totalPhotos ? `(${totalPhotos}/5)` : '(up to 5)'}
+      </div>
+      {totalPhotos ? (
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {keepPaths.map((p) => (
+            <div key={'k-' + p} className="relative">
+              <img
+                alt="Saved slip photo"
+                src={existingUrls[p] || ''}
+                className="h-24 w-full rounded-xl bg-rule object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removeExisting(p)}
+                aria-label="Remove saved photo"
+                className="absolute right-1 top-1 rounded-full bg-black/65 px-2 py-0.5 text-xs text-white"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {previews.map((u, i) => (
+            <div key={'n-' + i} className="relative">
+              <img alt="New slip photo preview" src={u} className="h-24 w-full rounded-xl bg-rule object-cover" />
+              <button
+                type="button"
+                onClick={() => removeNewPhoto(i)}
+                aria-label="Remove new photo"
+                className="absolute right-1 top-1 rounded-full bg-black/65 px-2 py-0.5 text-xs text-white"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
         </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-2.5">
+      ) : null}
+      {totalPhotos < 5 ? (
+        <div className="mt-2 grid grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={() => camRef.current?.click()}
@@ -169,16 +213,30 @@ export default function EntrySheet({ type: initialType, entry, onSave, onClose, 
             🖼 From gallery
           </button>
         </div>
-      )}
+      ) : null}
       <input
         ref={camRef}
         type="file"
         accept="image/*"
         capture="environment"
+        multiple
         hidden
-        onChange={(e) => pick(e.target.files?.[0])}
+        onChange={(e) => {
+          pickFiles(e.target.files);
+          e.target.value = '';
+        }}
       />
-      <input ref={galRef} type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0])} />
+      <input
+        ref={galRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          pickFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
       <div className="mt-2 min-h-5 text-[15px] text-dr" id="err" role="alert">
         {error}
       </div>
