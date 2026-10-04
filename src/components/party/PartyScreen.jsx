@@ -122,7 +122,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
         applyUpdatedEntry(queryClient, id, updated);
         await applyPhotoChange(editingEntry, { photoBlobs, keepPhotoPaths, photoBlob, removePhoto });
         setEditingEntry(null);
-        toast(`Entry updated to \u2605${fmtAmount(amount)}`);
+        toast(`Entry updated to ★ ${fmtAmount(amount)}`);
       } else {
         const created = await createEntry({ partyId: id, type, amount, entryDate: date, remark, photoPath: null });
         applyCreatedEntry(queryClient, id, created);
@@ -137,7 +137,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
           }
         }
         setEntryType(null);
-        toast(`${type === 'd' ? 'Debit' : 'Credit'} of \u2605${fmtAmount(amount)} saved`);
+        toast(`${type === 'd' ? 'Debit' : 'Credit'} of ★ ${fmtAmount(amount)} saved`);
       }
     } catch (e) {
       if (isAuthError(e)) lock();

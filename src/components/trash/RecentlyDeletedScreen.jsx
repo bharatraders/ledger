@@ -118,7 +118,7 @@ export default function RecentlyDeletedScreen() {
           <>
             {entries.map((e) => (
               <div key={e.id} className="rounded-[14px] border border-rule bg-card p-3.5">
-                <div className="font-semibold">{e.parties?.name || 'Party'} · <span className="num">★{fmtAmount(e.amount)}</span> {e.type === 'd' ? 'Debit' : 'Credit'}</div>
+                <div className="font-semibold">{e.parties?.name || 'Party'} · <span className="num">★ {fmtAmount(e.amount)}</span> {e.type === 'd' ? 'Debit' : 'Credit'}</div>
                 <div className="text-sm text-muted">{fmtDate(e.entry_date)}{e.remark ? ` · ${e.remark}` : ''} · Purges in {daysLeft(e.purge_at)} days</div>
                 <div className="mt-2.5 flex gap-2">
                   <button type="button" onClick={() => doRestoreEntry(e)} className="flex-1 rounded-xl border border-rule bg-paper px-3 py-2.5 font-bold">Restore</button>
