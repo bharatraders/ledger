@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useParties } from '../../hooks/useParties';
@@ -112,10 +112,11 @@ export default function HomeScreen({ onSelectParty, selectedId, embedded, deskto
   const inner = (
     <>
       <NavBar
-        title="Party Ledger"
+        title="Points Ledger"
         sub={`${parties.length} parties`}
         actions={null}
         desktopIcons={desktopIcons}
+        logo
       />
       <div className="px-[18px]">
         <TotalsBar toGet={fmtAmount(toGet)} toPay={fmtAmount(toPay)} />

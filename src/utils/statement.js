@@ -1,4 +1,4 @@
-import { computeAgeing, computeBalance, sortEntries } from './ageing';
+﻿import { computeAgeing, computeBalance, sortEntries } from './ageing';
 import { balLabel, balWords, esc, fmtAmount, fmtDate, todayStr } from './format';
 import { BUCKET_LABELS } from './ageing';
 
@@ -15,19 +15,19 @@ export function statement(party, entries) {
       fmtDate(e.entry_date) +
         '  ' +
         (e.type === 'd' ? 'Debit ' : 'Credit') +
-        '  \u20B9' +
+        '  \u2605' +
         fmtAmount(e.amount) +
         (e.is_opening ? '  (Opening balance)' : e.remark ? '  (' + e.remark + ')' : '')
     );
   });
   L.push('');
-  L.push('*Closing balance: \u20B9' + fmtAmount(b) + ' ' + balLabel(b) + '* (' + balWords(b) + ')');
+  L.push('*Closing balance: \u2605' + fmtAmount(b) + ' ' + balLabel(b) + '* (' + balWords(b) + ')');
   const ag = computeAgeing(entries);
   if (ag.pend.length) {
     L.push('');
     L.push('*Ageing of pending amount*');
     ag.buckets.forEach((v, i) => {
-      if (v > 0) L.push(BUCKET_LABELS[i] + ': \u20B9' + fmtAmount(v));
+      if (v > 0) L.push(BUCKET_LABELS[i] + ': \u2605' + fmtAmount(v));
     });
     L.push('Oldest unpaid: ' + ag.oldest + ' days');
   }
@@ -76,7 +76,7 @@ export function printHTML(party, entries) {
     fmtDate(todayStr()) +
     '</p><table><thead><tr><th>Date</th><th>Remark</th><th class="n">Debit</th><th class="n">Credit</th><th class="n">Balance</th></tr></thead><tbody>' +
     rows +
-    '</tbody></table><h3>Closing balance: \u20B9' +
+    '</tbody></table><h3>Closing balance: \u2605' +
     fmtAmount(b) +
     ' ' +
     balLabel(b) +

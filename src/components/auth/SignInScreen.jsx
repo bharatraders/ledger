@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { verifyBillingPin } from '../../lib/api/deviceAuth';
@@ -81,7 +81,8 @@ export default function SignInScreen({ firstRun = false }) {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-10">
-      <h1 className="text-2xl font-bold">{firstRun ? 'Finish setting up this device' : 'Party Ledger'}</h1>
+      <img src="/icon.png" alt="Points Ledger logo" className="h-16 w-16 rounded-2xl object-contain" />
+      <h1 className="mt-3 text-2xl font-bold">{firstRun ? 'Finish setting up this device' : 'Points Ledger'}</h1>
       <p className="mt-2 text-muted">
         {who}
         {lead}

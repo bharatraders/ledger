@@ -1,5 +1,10 @@
-export function fmtAmount(n) {
+﻿export function fmtAmount(n) {
   return Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+// Points unit shown before every amount (replaces the old ₹ rupee symbol).
+export const POINTS_SYMBOL = '★';
+export function fmtPoints(n) {
+  return `${POINTS_SYMBOL}${fmtAmount(n)}`;
 }
 export function fmtDate(isoDate) {
   const [y, m, d] = isoDate.split('-');

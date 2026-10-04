@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -67,7 +67,8 @@ export default function DeviceRegistrationScreen() {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-10">
-      <h1 className="text-2xl font-bold">Party Ledger</h1>
+      <img src="/icon.png" alt="Points Ledger logo" className="h-16 w-16 rounded-2xl object-contain" />
+      <h1 className="mt-3 text-2xl font-bold">Points Ledger</h1>
       <p className="mt-2 text-muted">
         This device is not registered. To use this application, authorize this device from an existing trusted device.
       </p>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import BottomSheet from './BottomSheet';
 import { compressImage } from '../../utils/image';
 import { fmtAmount, todayStr } from '../../utils/format';
@@ -128,7 +128,7 @@ export default function EntrySheet({ type: initialType, entry, onSave, onClose, 
         </div>
       ) : null}
       <label htmlFor="amt" className="mb-1 mt-3 block text-[15px] font-semibold text-muted">
-        Amount (₹)
+        Amount (★)
       </label>
       <input
         id="amt"

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useArchivedParties, useTrash } from '../../hooks/useParties';
 import { SessionIcons } from './SessionControls';
 
-export default function NavBar({ title, sub, belowSub, onBack, backLabel, actions, sessionControls = true, desktopIcons = true, backPill = false, backHideClass = '' }) {
+export default function NavBar({ title, sub, belowSub, onBack, backLabel, actions, sessionControls = true, desktopIcons = true, backPill = false, backHideClass = '', logo = false }) {
   const archivedQ = useArchivedParties();
   const trashQ = useTrash();
   const archivedCount = archivedQ.data?.length ?? 0;
@@ -45,9 +45,14 @@ export default function NavBar({ title, sub, belowSub, onBack, backLabel, action
         </div>
       ) : null}
       <div className="flex flex-wrap items-start justify-between gap-2.5">
-        <div className="min-w-0">
-          <h1 className="text-[20px] font-bold leading-tight md:text-[22px]">{title}</h1>
-          {sub ? <div className="mt-0.5 text-[15px] opacity-75">{sub}</div> : null}
+        <div className="flex min-w-0 items-center gap-2.5">
+          {logo ? (
+            <img src="/icon.png" alt="Points Ledger logo" className="h-10 w-10 flex-none rounded-xl bg-white/10 object-contain p-0.5" />
+          ) : null}
+          <div className="min-w-0">
+            <h1 className="text-[20px] font-bold leading-tight md:text-[22px]">{title}</h1>
+            {sub ? <div className="mt-0.5 text-[15px] opacity-75">{sub}</div> : null}
+          </div>
         </div>
         <div className="ml-auto flex flex-none items-center gap-2">
           {actions}

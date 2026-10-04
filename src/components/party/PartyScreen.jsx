@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useParty } from '../../hooks/useParties';
@@ -122,7 +122,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
         applyUpdatedEntry(queryClient, id, updated);
         await applyPhotoChange(editingEntry, { photoBlobs, keepPhotoPaths, photoBlob, removePhoto });
         setEditingEntry(null);
-        toast(`Entry updated to \u20B9${fmtAmount(amount)}`);
+        toast(`Entry updated to \u2605${fmtAmount(amount)}`);
       } else {
         const created = await createEntry({ partyId: id, type, amount, entryDate: date, remark, photoPath: null });
         applyCreatedEntry(queryClient, id, created);
@@ -137,7 +137,7 @@ export default function PartyScreen({ partyId: propId, onBack }) {
           }
         }
         setEntryType(null);
-        toast(`${type === 'd' ? 'Debit' : 'Credit'} of \u20B9${fmtAmount(amount)} saved`);
+        toast(`${type === 'd' ? 'Debit' : 'Credit'} of \u2605${fmtAmount(amount)} saved`);
       }
     } catch (e) {
       if (isAuthError(e)) lock();

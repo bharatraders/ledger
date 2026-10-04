@@ -1,4 +1,4 @@
-import { BUCKET_LABELS } from '../../utils/ageing';
+﻿import { BUCKET_LABELS } from '../../utils/ageing';
 import { fmtAmount } from '../../utils/format';
 
 export default function AgeingPanel({ ageing }) {
@@ -10,7 +10,7 @@ export default function AgeingPanel({ ageing }) {
         {ageing.buckets.map((v, i) => (
           <div key={i} className={`rounded-[10px] bg-paper px-1.5 py-2 text-center ${i === 3 && v > 0 ? 'bg-drbg' : ''}`}>
             <small className="block text-xs text-muted">{BUCKET_LABELS[i]}</small>
-            <b className={`num text-[15px] ${i === 3 && v > 0 ? 'text-dr' : ''}`}>₹{fmtAmount(v)}</b>
+            <b className={`num text-[15px] ${i === 3 && v > 0 ? 'text-dr' : ''}`}>★{fmtAmount(v)}</b>
           </div>
         ))}
       </div>

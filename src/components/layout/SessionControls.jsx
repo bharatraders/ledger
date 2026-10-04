@@ -14,7 +14,9 @@ function useTheme() {
     const next = el.classList.contains('dark') ? 'light' : 'dark';
     el.classList.toggle('dark', next === 'dark');
     try {
-      localStorage.setItem('party-ledger-theme', next);
+      // Renamed key; the old party-ledger key is left untouched so existing
+      // installs keep their theme until the next toggle.
+      localStorage.setItem('points-ledger-theme', next);
     } catch {
       // ignore
     }

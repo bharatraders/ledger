@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { fmtAmount, fmtDate, balLabel } from '../../utils/format';
 import { entryPhotos } from '../../lib/api/entries';
 import { getSignedPhotoUrl } from '../../lib/api/storage';
@@ -37,7 +37,7 @@ export function EntryCard({ entry, pending, running, onDelete, onEdit, onView })
     <div className={`flex gap-3 rounded-xl border border-l-[6px] border-rule bg-card p-3 shadow-sm ${entry.type === 'd' ? 'border-l-dr' : 'border-l-cr'}`}>
       <div className="min-w-0 flex-1">
         <div>
-          <span className="num text-[20px] font-extrabold md:text-[22px]">₹{fmtAmount(entry.amount)}</span>
+          <span className="num text-[20px] font-extrabold md:text-[22px]">★{fmtAmount(entry.amount)}</span>
           <span
             className={`ml-1.5 rounded-md px-2 py-0.5 align-middle text-[13px] font-bold ${
               entry.type === 'd' ? 'bg-drbg text-dr' : 'bg-crbg text-cr'
@@ -58,13 +58,13 @@ export function EntryCard({ entry, pending, running, onDelete, onEdit, onView })
             <div className="mt-1 text-sm font-bold text-cr">Cleared</div>
           ) : (
             <div className={`num mt-1 text-sm font-bold ${pending.days > 60 ? 'text-dr' : 'text-muted'}`}>
-              Pending ₹{fmtAmount(pending.rem)}
-              {pending.rem < pending.amt ? ` of ₹${fmtAmount(pending.amt)}` : ''} · {pending.days} days old
+              Pending ★{fmtAmount(pending.rem)}
+              {pending.rem < pending.amt ? ` of ★${fmtAmount(pending.amt)}` : ''} · {pending.days} days old
             </div>
           )
         ) : null}
         <div className="num mt-1 text-[13px] text-muted">
-          Balance after: ₹{fmtAmount(running)} {balLabel(running)}
+          Balance after: ★{fmtAmount(running)} {balLabel(running)}
         </div>
       </div>
       <div className="flex flex-none flex-col items-end gap-2">

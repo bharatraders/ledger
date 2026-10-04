@@ -3,10 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Party Ledger</title>
+    <title>Points Ledger</title>
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <meta name="theme-color" content="#0D1322" />
     <script>
       try {
-        var t = localStorage.getItem('party-ledger-theme');
+        var t = localStorage.getItem('points-ledger-theme') || localStorage.getItem('party-ledger-theme');
         if (t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
           document.documentElement.classList.add('dark');
         }
